@@ -4,7 +4,7 @@ Virtual AX.25 Packet Switching Equipment
 ## Packet Switching strategy
 
 ```mermaid
-flowchart LR
+flowchart TD
     Start@{ shape: rounded, label: "Incoming AX.25 frame" }
     Start --> SrcDroppable{"Src == N0CALL or<br> Src == NOCALL?"}
     SrcDroppable -->|No| FIBAdd@{ shape: win-pane, label: "Add source<br>address in FIB" }
