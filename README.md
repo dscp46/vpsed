@@ -19,3 +19,15 @@ flowchart TD
     FIBCheck --> |Yes| BCast@{ shape: lean-r, label: "Broadcast" }
     FIBCheck --> |No| Forward@{ shape: lean-r, label: "Forward to<br>dest. interface" }
 ```
+
+## Multicast Forwarding
+```mermaid
+flowchart TD
+    Start@{ shape: rounded, label: "Multicast<br>Forwarding" }
+    Start --> ForeachIface@{ shape: hex, label: "For each interface" }
+    ForeachIface --> SrcDroppable{"Src iface ==<br>Dst iface?"}
+    SrcDroppable -->|No| MCastEN{"Multicast<br>enabled?"}
+    SrcDroppable --> |Yes| Drop@{ shape: dbl-circ, label: "Drop" }
+    MCastEN -->|No| Forward@{ shape: lean-r, label: "Forward to<br>interface" }
+    MCastEN --> |Yes| Drop
+```
