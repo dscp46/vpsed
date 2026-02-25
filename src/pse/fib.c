@@ -65,6 +65,8 @@ int fib_find( fib_t *self, uint64_t addr)
 	if( (addr & 0xffff000000000000ULL) == 0x86A2000000000000ULL ) return FIB_MCAST; // CQ
 	if( (addr & 0xffff000000000000ULL) == 0x88B0000000000000ULL ) return FIB_MCAST; // DX
 
+	if( (addr & 0xffff000000000000ULL) == 0x9288000000000000ULL ) return FIB_MISS; // ID
+
 	fib_entry_t *entry;
 	HASH_FIND_INT( self->fib, &addr, entry);
 
