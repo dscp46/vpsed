@@ -5,7 +5,7 @@ SRC_DIR := src
 CFLAGS  += -I$(SRC_DIR)
 BIN_DIR := build
 
-SRCS := main.c config.c ax25/addr.c pse/fib.c
+SRCS := main.c config.c ax25/addr.c pse/fib.c pse/iface.c pse/pse.c
 OBJS := $(SRCS:%.c=$(BIN_DIR)/%.o)
 
 TARGET := $(BIN_DIR)/vpsed
