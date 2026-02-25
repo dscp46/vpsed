@@ -2,7 +2,8 @@ CC     ?= gcc
 CFLAGS += -Wall -Wextra
 
 SRC_DIR := src
-CFLAGS  += -I$(SRC_DIR)
+CFLAGS  += -I$(SRC_DIR) -DRCU_MB
+LDFLAGS += -lurcu-mb -lpthread
 BIN_DIR := build
 
 SRCS := main.c config.c ax25/addr.c pse/fib.c pse/iface.c pse/pse.c
@@ -22,7 +23,7 @@ $(BIN_DIR)/%.o: $(SRC_DIR)/%.c | $(BIN_DIR)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 $(TARGET): $(OBJS)
-	$(CC) -o $@ $^
+	$(CC) -o $@ $^ $(LDFLAGS)
 
 clean:
 	rm -rf $(BIN_DIR)

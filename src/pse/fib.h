@@ -1,6 +1,7 @@
 #ifndef PSE_FIB_H
 #define PSE_FIB_H
 
+#include <pthread.h>
 #include <stdint.h>
 #include <uthash.h>
 
@@ -22,6 +23,7 @@ typedef struct fib_entry {
 
 typedef struct fib {
 	fib_entry_t *fib;
+	pthread_mutex_t *writer_lock;
 
 	void (*insert)( struct fib *self, uint64_t addr, int iface, int is_static);
 	void (* prune)( struct fib *self, uint64_t addr, int is_static);

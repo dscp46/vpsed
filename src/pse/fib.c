@@ -1,10 +1,15 @@
 #include "pse/fib.h"
 
+#include <urcu.h>
+
 void fib_insert( fib_t *self, uint64_t addr, int iface, int is_static);
 void fib_prune( fib_t *self, uint64_t addr, int is_static);
 int fib_find( fib_t *self, uint64_t addr);
 void fib_tick( fib_t *self);
 void fib_free( fib_t *self);
+
+fib_entry_t *fib_list_duplicate( fib_entry_t *list);
+void fib_list_free( fib_entry_t *list);
 
 fib_t* fib_init()
 {
@@ -12,12 +17,14 @@ fib_t* fib_init()
 	if( self == NULL )
 		return NULL;
 
-	self->fib  = NULL;
+	rcu_assign_pointer( self->fib, NULL);
 	self->insert = fib_insert;
 	self->prune = fib_prune;
 	self->find = fib_find;
 	self->tick = fib_tick;
 	self->free = fib_free;
+	self->writer_lock = (pthread_mutex_t*) malloc( sizeof( pthread_mutex_t));
+	pthread_mutex_init( self->writer_lock, NULL);
 	return self;
 }
 
@@ -44,13 +51,25 @@ void fib_prune( fib_t *self, uint64_t addr, int is_static)
 {
 	if( self == NULL ) return;
 
-	fib_entry_t *entry;
-	HASH_FIND_INT( self->fib, &addr, entry);
+	fib_entry_t *entry, *old_fib, *new_fib;
+	pthread_mutex_lock( self->writer_lock);
 
+	old_fib = rcu_dereference( self->fib);
+	HASH_FIND_INT( old_fib, &addr, entry);
 	if( entry == NULL || ( !is_static && entry->is_static ))
+	{
+		pthread_mutex_unlock( self->writer_lock);
 		return;
+	}
 
-	HASH_DEL( self->fib, entry);
+	new_fib = fib_list_duplicate( old_fib);
+	HASH_DEL( new_fib, entry);
+	rcu_assign_pointer( self->fib, new_fib);
+	synchronize_rcu();
+
+	fib_list_free( old_fib);
+
+	pthread_mutex_unlock( self->writer_lock);
 	free( entry);
 }
 
@@ -67,8 +86,11 @@ int fib_find( fib_t *self, uint64_t addr)
 
 	if( (addr & 0xffff000000000000ULL) == 0x9288000000000000ULL ) return FIB_MISS; // ID
 
-	fib_entry_t *entry;
-	HASH_FIND_INT( self->fib, &addr, entry);
+	fib_entry_t *entry, *fib;
+	rcu_read_lock();
+	fib = rcu_dereference( self->fib);
+	HASH_FIND_INT( fib, &addr, entry);
+	rcu_read_unlock();
 
 	return ( entry == NULL ) ? entry->iface : FIB_MISS;
 }
@@ -92,12 +114,46 @@ void fib_free( fib_t *self)
 {
 	if( self == NULL ) return;
 
-	fib_entry_t *cur, *tmp;
-	HASH_ITER( hh, self->fib, cur, tmp)
+	fib_entry_t *cur, *tmp, *fib;
+
+	rcu_read_lock();
+	fib = rcu_dereference( self->fib);
+	HASH_ITER( hh, fib, cur, tmp)
 	{
-		HASH_DEL( self->fib, cur);
+		HASH_DEL( fib, cur);
 		free( cur);
 	}
+	rcu_read_unlock();
 
+	pthread_mutex_destroy( self->writer_lock);
 	free( self);
+}
+
+fib_entry_t *fib_list_duplicate( fib_entry_t *list)
+{
+	if( list == NULL ) return NULL;
+
+	fib_entry_t *cur, *tmp, *new_item, *new_list = NULL;
+
+	HASH_ITER( hh, list, cur, tmp)
+	{
+		new_item = (fib_entry_t*) malloc( sizeof( fib_entry_t));
+		memcpy( new_item, cur, sizeof( fib_entry_t));
+		HASH_ADD_INT( new_list, addr, new_item);
+	}
+
+	return new_list;
+}
+
+void fib_list_free( fib_entry_t *list)
+{
+	if( list == NULL ) return;
+
+	fib_entry_t *cur, *tmp;
+
+	HASH_ITER( hh, list, cur, tmp)
+	{
+		HASH_DEL( list, cur);
+		free( cur);
+	}
 }

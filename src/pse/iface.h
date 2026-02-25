@@ -9,8 +9,11 @@ typedef struct iface {
 	size_t runts;
 	void *p;
 	UT_hash_handle hh;
+	void (*close)( struct iface *self);
 } iface_t;
 
 int pse_next_iface_id( iface_t *iface_list);
+iface_t *iface_list_duplicate( iface_t *cur_list);
+void iface_list_free( iface_t *iface_list);
 
 #endif	/* PSE_IFACE_H */

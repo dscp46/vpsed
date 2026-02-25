@@ -7,6 +7,7 @@
 
 typedef struct pse {
 	iface_t *iface_list;
+	pthread_mutex_t *writer_lock;
 
 	void (*   add_iface)( struct pse *self, iface_t *iface);
 	void (*switch_frame)( struct pse *self, UT_string *frame, int src_iface);
