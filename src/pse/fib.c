@@ -33,18 +33,37 @@ void fib_insert( fib_t *self, uint64_t addr, int iface, int is_static)
 	if( self == NULL ) return;
 
 	fib_entry_t *entry;
-	HASH_FIND_INT( self->fib, &addr, entry);
-
-	// Skip if we find a static entry
-	if( !is_static && entry != NULL && entry->is_static )
+	fib_t *old_fib, *new_fib;
+	rcu_read_lock();
+	old_fib = rcu_dereference( self->fib);
+	HASH_FIND_INT( old_fib, &addr, entry);
+	rcu_read_unlock();
+	
+	if( entry != NULL )
+	{
+		// Entry found. Bump its TTL.
+		entry->ttl = 0;
+		
+		// Override the destination interface
+		if( is_static || !entry->is_static )
+			entry->iface = iface;
 		return;
-
+	}
+	
 	entry = (fib_entry_t*) malloc( sizeof(fib_entry_t));
 	entry->addr = addr;
 	entry->iface = iface;
 	entry->ttl = 0;
 	entry->is_static = is_static;
-	HASH_ADD_INT( self->fib, addr, entry);
+	
+	pthread_mutex_lock( self->writer_lock);
+	new_fib = fib_list_duplicate( old_fib);
+	HASH_ADD_INT( new_fib, addr, entry);
+	rcu_assign_pointer( self->fib, new_fib);
+	pthread_mutex_unlock( self->writer_lock);
+	
+	synchronize_rcu();
+	fib_list_free( old_fib);
 }
 
 void fib_prune( fib_t *self, uint64_t addr, int is_static)
