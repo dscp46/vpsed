@@ -33,7 +33,7 @@ void fib_insert( fib_t *self, uint64_t addr, int iface, int is_static)
 	if( self == NULL ) return;
 
 	fib_entry_t *entry;
-	fib_t *old_fib, *new_fib;
+	fib_entry_t *old_fib, *new_fib;
 	rcu_read_lock();
 	old_fib = rcu_dereference( self->fib);
 	HASH_FIND_INT( old_fib, &addr, entry);
@@ -41,6 +41,7 @@ void fib_insert( fib_t *self, uint64_t addr, int iface, int is_static)
 	if( entry != NULL )
 	{
 		rcu_read_unlock();
+
 		// Entry found. Bump its TTL.
 		entry->ttl = 0;
 		
