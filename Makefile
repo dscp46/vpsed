@@ -1,3 +1,6 @@
+REQUIRED_LIBS = liburcu
+PKG_CONFIG ?= pkg-config
+
 CC     ?= gcc
 CFLAGS += -Wall -Wextra
 
@@ -13,7 +16,11 @@ TARGET := $(BIN_DIR)/vpsed
 
 .PHONY: all clean
 
-all: $(TARGET)
+all: check-libs $(TARGET)
+
+check-libs:
+	@$(shell $(PKG_CONFIG) --exists $(REQUIRED_LIBS) || \
+	( echo "Missing one of the required libraries: $(REQUIRED_LIBS)"; exit 1 ))
 
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)/ax25
