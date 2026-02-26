@@ -34,20 +34,19 @@ void fib_insert( fib_t *self, uint64_t addr, int iface, int is_static)
 
 	fib_entry_t *entry;
 	fib_entry_t *old_fib, *new_fib;
-	rcu_read_lock();
+	pthread_mutex_lock( self->writer_lock);
 	old_fib = rcu_dereference( self->fib);
 	HASH_FIND_INT( old_fib, &addr, entry);
 	
 	if( entry != NULL )
 	{
-		rcu_read_unlock();
-
 		// Entry found. Bump its TTL.
 		entry->ttl = 0;
 		
 		// Override the destination interface
 		if( is_static || !entry->is_static )
 			entry->iface = iface;
+		pthread_mutex_unlock( self->writer_lock);
 		return;
 	}
 	
@@ -57,9 +56,7 @@ void fib_insert( fib_t *self, uint64_t addr, int iface, int is_static)
 	entry->ttl = 0;
 	entry->is_static = is_static;
 	
-	pthread_mutex_lock( self->writer_lock);
 	new_fib = fib_list_duplicate( old_fib);
-	rcu_read_unlock();
 	HASH_ADD_INT( new_fib, addr, entry);
 	rcu_assign_pointer( self->fib, new_fib);
 	pthread_mutex_unlock( self->writer_lock);
@@ -117,17 +114,27 @@ int fib_find( fib_t *self, uint64_t addr)
 
 void fib_tick( fib_t *self)
 {
-	fib_entry_t *cur, *tmp;
+	fib_entry_t *cur, *tmp, *old_fib, *new_fib;
 
-	HASH_ITER( hh, self->fib, cur, tmp) 
+	pthread_mutex_lock( self->writer_lock);
+	old_fib = rcu_dereference( self->fib);
+	new_fib = fib_list_duplicate( old_fib);
+
+	HASH_ITER( hh, new_fib, cur, tmp) 
 	{
 		// Prune dynamic entries with an aged-out TTL
 		if( !(cur->is_static) && (++(cur->ttl) > FIB_TTL) )
 		{
-			HASH_DEL( self->fib, cur);
+			HASH_DEL( new_fib, cur);
 			free( cur);
 		}
 	}
+
+	rcu_assign_pointer( self->fib, new_fib);
+	pthread_mutex_unlock( self->writer_lock);
+	
+	synchronize_rcu();
+	fib_list_free( old_fib);
 }
 
 void fib_free( fib_t *self)
