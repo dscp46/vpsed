@@ -65,11 +65,10 @@ void fib_prune( fib_t *self, uint64_t addr, int is_static)
 	new_fib = fib_list_duplicate( old_fib);
 	HASH_DEL( new_fib, entry);
 	rcu_assign_pointer( self->fib, new_fib);
-	synchronize_rcu();
-
-	fib_list_free( old_fib);
-
 	pthread_mutex_unlock( self->writer_lock);
+	
+	synchronize_rcu();
+	fib_list_free( old_fib);
 	free( entry);
 }
 
