@@ -2,6 +2,7 @@
 #define PSE_IFACE_H
 
 #include <uthash.h>
+#include <utstring.h>
 
 typedef struct iface {
 	int id;
@@ -9,6 +10,7 @@ typedef struct iface {
 	size_t runts;
 	void *p;
 	UT_hash_handle hh;
+	void (* send)( struct iface *self, UT_string *frame);
 	void (*close)( struct iface *self);
 } iface_t;
 
