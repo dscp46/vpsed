@@ -37,10 +37,10 @@ void fib_insert( fib_t *self, uint64_t addr, int iface, int is_static)
 	rcu_read_lock();
 	old_fib = rcu_dereference( self->fib);
 	HASH_FIND_INT( old_fib, &addr, entry);
-	rcu_read_unlock();
 	
 	if( entry != NULL )
 	{
+		rcu_read_unlock();
 		// Entry found. Bump its TTL.
 		entry->ttl = 0;
 		
@@ -58,6 +58,7 @@ void fib_insert( fib_t *self, uint64_t addr, int iface, int is_static)
 	
 	pthread_mutex_lock( self->writer_lock);
 	new_fib = fib_list_duplicate( old_fib);
+	rcu_read_unlock();
 	HASH_ADD_INT( new_fib, addr, entry);
 	rcu_assign_pointer( self->fib, new_fib);
 	pthread_mutex_unlock( self->writer_lock);
