@@ -34,7 +34,7 @@ void fib_insert( fib_t *self, uint64_t addr, int iface, int is_static)
 
 	fib_entry_t *entry;
 	fib_entry_t *old_fib, *new_fib;
-	pthread_mutex_lock( self->writer_lock);
+	rcu_read_lock();
 	old_fib = rcu_dereference( self->fib);
 	HASH_FIND_INT( old_fib, &addr, entry);
 	
@@ -46,9 +46,11 @@ void fib_insert( fib_t *self, uint64_t addr, int iface, int is_static)
 		// Override the destination interface
 		if( is_static || !entry->is_static )
 			entry->iface = iface;
-		pthread_mutex_unlock( self->writer_lock);
+		rcu_read_unlock();
 		return;
 	}
+
+	rcu_read_unlock();
 	
 	entry = (fib_entry_t*) malloc( sizeof(fib_entry_t));
 	entry->addr = addr;
@@ -56,6 +58,8 @@ void fib_insert( fib_t *self, uint64_t addr, int iface, int is_static)
 	entry->ttl = 0;
 	entry->is_static = is_static;
 	
+	pthread_mutex_lock( self->writer_lock);
+	old_fib = rcu_dereference( self->fib);
 	new_fib = fib_list_duplicate( old_fib);
 	HASH_ADD_INT( new_fib, addr, entry);
 	rcu_assign_pointer( self->fib, new_fib);
@@ -183,4 +187,10 @@ void fib_list_free( fib_entry_t *list)
 		HASH_DEL( list, cur);
 		free( cur);
 	}
+}
+
+void fib_entry_rcu_free(struct rcu_head *head)
+{
+	fib_entry_t *list = (fib_entry_t*) caa_container_of(head, fib_entry_t, rcu);
+	fib_list_free( list);
 }

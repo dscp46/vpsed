@@ -3,6 +3,7 @@
 
 #include <pthread.h>
 #include <stdint.h>
+#include <urcu.h>
 #include <uthash.h>
 
 #define FIB_MCAST	-1
@@ -19,6 +20,7 @@ typedef struct fib_entry {
 	int ttl;
 	int is_static;
 	UT_hash_handle hh;
+	struct rcu_head rcu;
 } fib_entry_t;
 
 typedef struct fib {
