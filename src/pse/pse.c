@@ -7,6 +7,7 @@
 #include <utstring.h>
 
 void pse_add_iface( pse_t *self, iface_t *iface);
+void pse_detach_iface( pse_t *self, int id);
 void pse_switch_frame( pse_t *self, UT_string *frame, int src_iface);
 void pse_free( pse_t *self);
 
@@ -18,6 +19,7 @@ pse_t *pse_init(void)
 	self->fib = fib_init();
 	self->iface_list = NULL;
 	self->add_iface = pse_add_iface;
+	self->detach_iface = pse_detach_iface;
 	self->switch_frame = pse_switch_frame;
 	self->free = pse_free;
 	self->writer_lock = (pthread_mutex_t *)malloc( sizeof( pthread_mutex_t));
@@ -38,9 +40,40 @@ void pse_add_iface( pse_t *self, iface_t *iface)
 	new_iface_list = iface_list_duplicate( old_iface_list);
 	iface->id = next_id;
 	iface->mcast_enabled = 0;
+	iface->pse = self;
 	HASH_ADD_INT( new_iface_list, id, iface);
 
 	rcu_assign_pointer( self->iface_list, new_iface_list);
+	pthread_mutex_unlock( self->writer_lock);
+
+	synchronize_rcu();
+	iface_list_free( old_iface_list);
+}
+
+void pse_detach_iface( pse_t *self, int id)
+{
+	if( self == NULL )
+		return;
+
+	iface_t *old_iface_list, *new_iface_list, *iface;
+
+	rcu_read_lock();
+	old_iface_list = rcu_dereference( self->iface_list);
+	HASH_FIND_INT( old_iface_list, &id, iface);
+	if( iface == NULL )
+	{
+		rcu_read_unlock();
+		return;
+	}
+	rcu_read_unlock();
+
+	// FIXME: Prune all FIB entries linked to interface
+
+	pthread_mutex_lock( self->writer_lock);
+	old_iface_list = rcu_dereference( self->iface_list);
+	new_iface_list = iface_list_duplicate( old_iface_list);
+	HASH_FIND_INT( new_iface_list, &id, iface);
+	HASH_DEL( new_iface_list, iface);
 	pthread_mutex_unlock( self->writer_lock);
 
 	synchronize_rcu();

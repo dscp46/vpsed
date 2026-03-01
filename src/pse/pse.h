@@ -12,9 +12,10 @@ struct pse {
 	fib_t *fib;
 	pthread_mutex_t *writer_lock;
 
-	void (*   add_iface)( struct pse *self, iface_t *iface);
-	void (*switch_frame)( struct pse *self, UT_string *frame, int src_iface);
-	void (*        free)( struct pse *self);
+	void (*    add_iface)( struct pse *self, iface_t *iface);
+	void (* detach_iface)( struct pse *self, int id);
+	void (* switch_frame)( struct pse *self, UT_string *frame, int src_iface);
+	void (*         free)( struct pse *self);
 };
 
 pse_t *pse_init(void);
