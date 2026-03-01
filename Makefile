@@ -9,7 +9,7 @@ CFLAGS  += -I$(SRC_DIR) -DRCU_MB
 LDFLAGS += -lurcu-mb -lpthread
 BIN_DIR := build
 
-SRCS := main.c config.c ax25/addr.c pse/fib.c pse/iface.c pse/pse.c
+SRCS := main.c config.c ax25/addr.c pse/fib.c pse/iface.c pse/pse.c iface/unix_kiss.c
 OBJS := $(SRCS:%.c=$(BIN_DIR)/%.o)
 
 TARGET := $(BIN_DIR)/vpsed
@@ -24,6 +24,7 @@ check-libs:
 
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)/ax25
+	mkdir -p $(BIN_DIR)/iface
 	mkdir -p $(BIN_DIR)/pse
 
 $(BIN_DIR)/%.o: $(SRC_DIR)/%.c | $(BIN_DIR)
