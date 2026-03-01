@@ -4,7 +4,7 @@
 #include "pse/iface.h"
 #include "pse/pse.h"
 
-typedef struct unix_kiss_opaque {
+typedef struct unix_kiss_priv {
 	int fd;
 } unix_kiss_t;
 
