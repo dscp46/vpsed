@@ -36,5 +36,6 @@ typedef struct fib {
 
 
 fib_t* fib_init();
+void fib_list_rcu_free(struct rcu_head *head);
 
 #endif	/* PSE_FIB_H */

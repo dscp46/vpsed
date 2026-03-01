@@ -65,8 +65,7 @@ void fib_insert( fib_t *self, uint64_t addr, int iface, int is_static)
 	rcu_assign_pointer( self->fib, new_fib);
 	pthread_mutex_unlock( self->writer_lock);
 	
-	synchronize_rcu();
-	fib_list_free( old_fib);
+	call_rcu( &old_fib->rcu, fib_list_rcu_free);
 }
 
 void fib_prune( fib_t *self, uint64_t addr, int is_static)
@@ -89,8 +88,7 @@ void fib_prune( fib_t *self, uint64_t addr, int is_static)
 	rcu_assign_pointer( self->fib, new_fib);
 	pthread_mutex_unlock( self->writer_lock);
 	
-	synchronize_rcu();
-	fib_list_free( old_fib);
+	call_rcu( &old_fib->rcu, fib_list_rcu_free);
 	free( entry);
 }
 
@@ -137,8 +135,7 @@ void fib_tick( fib_t *self)
 	rcu_assign_pointer( self->fib, new_fib);
 	pthread_mutex_unlock( self->writer_lock);
 	
-	synchronize_rcu();
-	fib_list_free( old_fib);
+	call_rcu( &old_fib->rcu, fib_list_rcu_free);
 }
 
 void fib_free( fib_t *self)
@@ -189,7 +186,7 @@ void fib_list_free( fib_entry_t *list)
 	}
 }
 
-void fib_entry_rcu_free(struct rcu_head *head)
+void fib_list_rcu_free(struct rcu_head *head)
 {
 	fib_entry_t *list = (fib_entry_t*) caa_container_of(head, fib_entry_t, rcu);
 	fib_list_free( list);
