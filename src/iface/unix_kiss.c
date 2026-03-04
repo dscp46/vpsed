@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 void unix_kiss_send( iface_t *self, UT_string *frame);
+void unix_kiss_set_pse( iface_t *self, pse_t *pse);
 void unix_kiss_free( iface_t *self);
 
 iface_t *unix_kiss_new( int fd)
@@ -15,11 +16,13 @@ iface_t *unix_kiss_new( int fd)
 		free( self);
 		return NULL;
 	}
+	priv->reader = (pthread_t*) malloc( sizeof(pthread_t));
 
 	priv->fd = fd;
+	priv->pse = NULL;
 	self->p = priv;
-	self->pse = NULL;
 	self->send = unix_kiss_send;
+	self->set_pse = unix_kiss_set_pse;
 	self->close = unix_kiss_free;
 
 	// FIXME: run socket reader thread
@@ -43,14 +46,30 @@ void unix_kiss_send( iface_t *self, UT_string *frame)
 	while( written < len);
 }
 
+void unix_kiss_set_pse( iface_t *self, pse_t *pse)
+{
+	if( self == NULL ) return;
+
+	unix_kiss_t *priv = (unix_kiss_t*) self->p;
+	if( priv == NULL ) return;
+
+	priv->pse = pse;
+}
+
 void unix_kiss_free( iface_t *self)
 {
 	if( self == NULL ) return;
 	unix_kiss_t *priv = self->p;
 	if( priv != NULL )
 	{
-		if( self->pse != NULL )
-			self->pse->detach_iface( self->pse, self->id);
+		if( priv->reader != NULL)
+		{
+			pthread_cancel( *(priv->reader));
+			free( priv->reader);
+		}
+
+		if( priv->pse != NULL )
+			priv->pse->detach_iface( priv->pse, self->id);
 
 		if( priv->fd >= 0 )
 			close( priv->fd);

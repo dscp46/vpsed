@@ -11,10 +11,10 @@ struct iface {
 	int mcast_enabled;
 	size_t runts;
 	void *p;
-	pse_t *pse;
 	UT_hash_handle hh;
-	void (* send)( struct iface *self, UT_string *frame);
-	void (*close)( struct iface *self);
+	void (*   send)( struct iface *self, UT_string *frame);
+	void (*set_pse)( struct iface *self, pse_t *pse);
+	void (*  close)( struct iface *self);
 };
 
 int pse_next_iface_id( iface_t *iface_list);

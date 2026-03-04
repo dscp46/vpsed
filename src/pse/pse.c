@@ -40,7 +40,7 @@ void pse_add_iface( pse_t *self, iface_t *iface)
 	new_iface_list = iface_list_duplicate( old_iface_list);
 	iface->id = next_id;
 	iface->mcast_enabled = 0;
-	iface->pse = self;
+	iface->set_pse( iface, self);
 	HASH_ADD_INT( new_iface_list, id, iface);
 
 	rcu_assign_pointer( self->iface_list, new_iface_list);
