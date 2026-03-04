@@ -8,6 +8,7 @@
 
 typedef struct unix_kiss_priv {
 	int fd;
+	int run_reader;
 	pse_t *pse;
 	pthread_t *reader;
 } unix_kiss_t;

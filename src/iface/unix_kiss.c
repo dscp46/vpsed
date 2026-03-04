@@ -1,10 +1,15 @@
 #include "iface/unix_kiss.h"
 
+#include <errno.h>
 #include <unistd.h>
+#include <sys/socket.h>
 
-void unix_kiss_send( iface_t *self, UT_string *frame);
-void unix_kiss_set_pse( iface_t *self, pse_t *pse);
-void unix_kiss_free( iface_t *self);
+#define UNIX_READER_BUF_SZ	256
+
+static void unix_kiss_send( iface_t *self, UT_string *frame);
+static void unix_kiss_set_pse( iface_t *self, pse_t *pse);
+static void unix_kiss_free( iface_t *self);
+static void* unix_kiss_reader( void* runarg);
 
 iface_t *unix_kiss_new( int fd)
 {
@@ -25,12 +30,13 @@ iface_t *unix_kiss_new( int fd)
 	self->set_pse = unix_kiss_set_pse;
 	self->close = unix_kiss_free;
 
-	// FIXME: run socket reader thread
+	priv->run_reader = 1;
+	pthread_create( priv->reader, NULL, unix_kiss_reader, priv);
 
 	return self;
 }
 
-void unix_kiss_send( iface_t *self, UT_string *frame)
+static void unix_kiss_send( iface_t *self, UT_string *frame)
 {
 	if( self == NULL || frame == NULL ) return;
 
@@ -46,7 +52,7 @@ void unix_kiss_send( iface_t *self, UT_string *frame)
 	while( written < len);
 }
 
-void unix_kiss_set_pse( iface_t *self, pse_t *pse)
+static void unix_kiss_set_pse( iface_t *self, pse_t *pse)
 {
 	if( self == NULL ) return;
 
@@ -56,15 +62,21 @@ void unix_kiss_set_pse( iface_t *self, pse_t *pse)
 	priv->pse = pse;
 }
 
-void unix_kiss_free( iface_t *self)
+static void unix_kiss_free( iface_t *self)
 {
 	if( self == NULL ) return;
 	unix_kiss_t *priv = self->p;
+	void *retval;
+
 	if( priv != NULL )
 	{
+		if( priv->fd >= 0 )
+			shutdown( priv->fd, SHUT_RDWR);
+
 		if( priv->reader != NULL)
 		{
-			pthread_cancel( *(priv->reader));
+			priv->run_reader = 0;
+			pthread_join( *(priv->reader), &retval);
 			free( priv->reader);
 		}
 
@@ -77,4 +89,34 @@ void unix_kiss_free( iface_t *self)
 		free( priv);
 	}
 	free( self);
+}
+
+static void* unix_kiss_reader( void* runarg)
+{
+	if( runarg == NULL ) return NULL;
+	unix_kiss_t *priv = (unix_kiss_t*) runarg;
+
+	char *buffer = malloc( UNIX_READER_BUF_SZ);
+	ssize_t read_bytes;
+
+	while( priv->run_reader)
+	{
+		if( priv->pse == NULL)
+		{
+			sleep(1);
+			continue;
+		}
+
+		if((read_bytes = read( priv->fd, buffer, UNIX_READER_BUF_SZ)) < 0 )
+		{
+			if( read_bytes == EAGAIN || read_bytes == EWOULDBLOCK )
+				continue;
+			break;
+		}
+
+		// TODO: KISS processing
+	}
+
+	free( buffer);
+	return NULL;
 }
