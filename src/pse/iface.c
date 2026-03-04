@@ -47,3 +47,12 @@ void iface_list_free( iface_t *iface_list)
 		free( cur);
 	}
 }
+
+iface_stats_t *iface_stats_init( void)
+{
+	iface_stats_t *stats = (iface_stats_t*) malloc( sizeof(iface_stats_t));
+	if( stats == NULL ) return NULL;
+
+	memset( stats, 0, sizeof( iface_stats_t));
+	return stats;
+}

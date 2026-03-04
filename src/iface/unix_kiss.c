@@ -25,6 +25,7 @@ iface_t *unix_kiss_new( int fd)
 
 	priv->fd = fd;
 	priv->pse = NULL;
+	self->stats = iface_stats_init();
 	self->p = priv;
 	self->send = unix_kiss_send;
 	self->set_pse = unix_kiss_set_pse;
@@ -67,6 +68,9 @@ static void unix_kiss_free( iface_t *self)
 	if( self == NULL ) return;
 	unix_kiss_t *priv = self->p;
 	void *retval;
+
+	if( self->stats != NULL )
+		free( self->stats);
 
 	if( priv != NULL )
 	{

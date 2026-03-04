@@ -99,7 +99,7 @@ void pse_switch_frame( pse_t *self, UT_string *frame, int src_iface)
 	if( frame_sz < 16 )
 	{
 		if( found_iface != NULL )
-			++(found_iface->runts);
+			++(found_iface->stats->runts);
 		return;
 	}
 
